@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실시간 채팅</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <header class="bg-blue-600 text-white p-4 flex justify-between items-center flex-wrap">
+        <h1 class="text-xl font-semibold">채팅방</h1>
+        <div id="user-info-header" class="text-sm flex items-center space-x-4">
+            <span id="user-nickname-display">Guest</span>
+            <span id="current-room-display"></span>
+            <button id="logoutButton" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded">로그아웃</button>
+        </div>
+    </header>
+
+    <div id="connection-controls" class="bg-gray-600 text-white p-4 flex flex-wrap items-center space-x-2">
+        <form id="connect-form" class="flex items-center space-x-2">
+            <label for="roomId" class="text-sm">채팅방 ID:</label>
+            <input type="text" id="roomId" placeholder="ID 입력" class="px-2 py-1 rounded border border-gray-300 text-black">
+            <button id="connect" type="submit" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded">연결</button>
+        </form>
+        <button id="disconnect" disabled class="bg-yellow-400 hover:bg-yellow-500 text-black px-3 py-1 rounded">연결 끊기</button>
+    </div>
+
+    <div id="chat-area" class="hidden flex flex-col flex-grow max-w-3xl mx-auto my-4 bg-white p-4 rounded shadow">
+        <ul id="conversation" class="flex-grow overflow-y-auto border border-gray-300 p-2 rounded space-y-2 bg-gray-50">
+            <!-- 채팅 메시지가 여기에 표시됩니다. -->
+        </ul>
+        <div class="flex mt-4">
+            <input type="text" id="message" placeholder="메시지를 입력하세요..." class="flex-grow px-3 py-2 border border-gray-300 rounded-l">
+            <button id="send" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r">전송</button>
+        </div>
+    </div>
+
+    <script src="/js/index.js"></script>
+    
+</body>
+</html>

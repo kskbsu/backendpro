@@ -3,6 +3,7 @@ var stompClient = null;
 var currentRoomId = null;
 var currentUserNickname = "Guest"; // 기본값, 로그인 시 변경됨
 var currentUserPreferredLanguage = null; // 사용자의 선호 언어
+var bufferedCurrentUserJoinMessage = null; // 현재 사용자의 JOIN 메시지 임시 저장
 
 // DOM 요소
 const connectButton = document.getElementById('connect');
@@ -22,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchCurrentUserNickname();
     // fetchChatRooms(); // 채팅방 목록 불러오기 제거
     document.getElementById('connect-form').addEventListener('submit', function(event) {
-        event.preventDefault(); 
+        event.preventDefault();
         connect();
     });
 
@@ -38,6 +39,12 @@ document.addEventListener('DOMContentLoaded', function() {
             sendMessage();
         }
     });
+
+    // 로그아웃 버튼 이벤트 리스너 추가
+    const logoutBtn = document.getElementById('logoutButton');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logoutAndRedirect);
+    }
 });
 
 function fetchCurrentUserNickname() {
@@ -57,18 +64,28 @@ function fetchCurrentUserNickname() {
         .catch(error => {
             console.error('Error fetching user nickname:', error);
             userNicknameDisplay.textContent = "Guest (Error)";
-        }); 
+        });
 }
 
 function setConnected(connected) {
     roomIdInput.disabled = connected;
     connectButton.disabled = connected;
     disconnectButton.disabled = !connected;
-    chatArea.style.display = connected ? 'block' : 'none';
+    // chatArea.style.display = connected ? 'block' : 'none'; // 기존 방식
+    // Tailwind CSS 사용 시 예시:
+    // chatArea.classList.toggle('hidden', !connected);
+    // chatArea.classList.toggle('flex', connected); // chatArea가 flex 컨테이너일 경우
+    if (connected) {
+        chatArea.style.display = 'flex'; // 또는 'block', 프로젝트 스타일에 맞게
+    } else {
+        chatArea.style.display = 'none';
+    }
+
     if (!connected) {
-        conversation.innerHTML = ''; 
+        conversation.innerHTML = '';
         currentRoomId = null;
         currentRoomDisplay.textContent = '';
+        bufferedCurrentUserJoinMessage = null; // 연결 끊길 때 버퍼 초기화
     }
 }
 
@@ -84,23 +101,24 @@ function connect() {
     }
 
     if (stompClient !== null && stompClient.connected) {
-        disconnect(true); 
+        disconnect(true); // 이전 연결이 있다면 조용히 해제
     }
-    
-    currentRoomId = roomIdToConnect; 
+
+    currentRoomId = roomIdToConnect;
+    bufferedCurrentUserJoinMessage = null; // 새 방 연결 시 버퍼 초기화
     currentRoomDisplay.textContent = `Current Room: ${currentRoomId.substring(0,8)}...`;
 
     var socket = new SockJS('/ws-chat');
-    stompClient = Stomp.over(socket); 
+    stompClient = Stomp.over(socket);
 
     stompClient.connect({}, function (frame) {
         setConnected(true);
         console.log('Connected: ' + frame);
-        
+
         stompClient.subscribe('/topic/room/' + currentRoomId, function (chatMessage) {
             showMessage(JSON.parse(chatMessage.body));
         });
-        
+
         // 이전 대화 내용 구독 (사용자 특정 큐)
         stompClient.subscribe('/user/queue/room.history', function(message) {
             handleHistoryMessage(JSON.parse(message.body));
@@ -122,6 +140,7 @@ function connect() {
 
 function disconnect(silentDisconnect = false) {
     if (stompClient !== null && currentRoomId) {
+        bufferedCurrentUserJoinMessage = null; // 연결 끊을 때 버퍼 초기화
         stompClient.send("/app/chat.leaveUser/" + currentRoomId,
             {},
             JSON.stringify({sender: currentUserNickname, content: null}) // ClientMessagePayload 형식
@@ -134,79 +153,111 @@ function disconnect(silentDisconnect = false) {
             }
         });
     } else if (!silentDisconnect) {
-         setConnected(false); 
+         setConnected(false);
     }
 }
 
 function sendMessage() {
-    const messageContent = messageInput.value.trim(); 
+    const messageContent = messageInput.value.trim();
 
     if (messageContent && stompClient && currentRoomId) {
         const chatMessage = {
             // ClientMessagePayload DTO 형식에 맞게 전송
             content: messageContent
+            // sender는 서버에서 인증 정보로 처리하므로 클라이언트에서 보낼 필요 없음 (CHAT 메시지의 경우)
         };
         stompClient.send("/app/chat.sendMessage/" + currentRoomId, {}, JSON.stringify(chatMessage));
-        messageInput.value = ''; 
+        messageInput.value = '';
     }
 }
 
-function showMessage(message) {
-    const messageElement = document.createElement('li'); 
-    messageElement.classList.add('message-item'); 
+function appendMessageToConversation(messageDataForDisplay) {
+    const messageElement = document.createElement('li');
+    // Tailwind CSS를 사용한다고 가정하고, 직접 스타일 클래스 적용 또는 기존 마커 클래스 사용
+    // 예시: messageElement.classList.add('p-2', 'rounded', 'break-words', 'mb-2', 'max-w-[85%]', 'sm:max-w-[70%]');
+    messageElement.classList.add('message-item'); // 기존 방식 유지 시
 
     let messageText = "";
-    // 서버에서 오는 BroadcastMessage DTO의 type 필드 사용
-    if (message.type === 'JOIN') { 
-        messageText = message.sender + ' joined!';
-        messageElement.classList.add('event-message', 'join-message');
-    } else if (message.type === 'LEAVE') { 
-        messageText = message.sender + ' left!';
-        messageElement.classList.add('event-message', 'leave-message');
-    } else if (message.type === 'CHAT') { // CHAT
-        messageText = `<strong>${message.sender}:</strong> ${message.content}`;
-        messageElement.classList.add('chat-message');
-        if (message.sender === currentUserNickname) {
-            messageElement.classList.add('my-message');
+
+    if (messageDataForDisplay.type === 'JOIN') {
+        messageText = messageDataForDisplay.sender + ' joined!';
+        // Tailwind 예시: messageElement.classList.add('italic', 'text-gray-600', 'text-center', 'text-sm', 'bg-gray-100', 'py-1', 'my-1', 'text-green-600', 'mx-auto');
+        messageElement.classList.add('event-message', 'join-message'); // 기존 방식
+    } else if (messageDataForDisplay.type === 'LEAVE') {
+        messageText = messageDataForDisplay.sender + ' left!';
+        // Tailwind 예시: messageElement.classList.add('italic', 'text-gray-600', 'text-center', 'text-sm', 'bg-gray-100', 'py-1', 'my-1', 'text-red-600', 'mx-auto');
+        messageElement.classList.add('event-message', 'leave-message'); // 기존 방식
+    } else if (messageDataForDisplay.type === 'CHAT') {
+        messageText = `<strong>${messageDataForDisplay.sender}:</strong> ${messageDataForDisplay.content}`;
+        // Tailwind 예시:
+        // if (messageDataForDisplay.sender === currentUserNickname) {
+        //     messageElement.classList.add('bg-blue-500', 'text-white', 'ml-auto', 'text-right', 'rounded-lg', 'px-3', 'py-2');
+        // } else {
+        //     messageElement.classList.add('bg-gray-200', 'text-gray-800', 'mr-auto', 'text-left', 'rounded-lg', 'px-3', 'py-2');
+        // }
+        messageElement.classList.add('chat-message'); // 기존 방식
+        if (messageDataForDisplay.sender === currentUserNickname) {
+            messageElement.classList.add('my-message'); // 기존 방식
         } else {
-            messageElement.classList.add('other-message');
-        }
-        // 타임스탬프 추가 (간단하게)
-        if(message.timestamp) {
-            const time = new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            messageText += ` <small class="text-muted">(${time})</small>`;
-        }
-        // 원본 언어 표시 (사용자 선호 언어와 다를 경우)
-        if (message.originalLanguage && currentUserPreferredLanguage && message.originalLanguage.toLowerCase() !== currentUserPreferredLanguage.toLowerCase()) {
-            messageText += ` <small class="text-info" style="font-size: 0.8em;">(Original: ${message.originalLanguage})</small>`;
+            messageElement.classList.add('other-message'); // 기존 방식
         }
 
-    } else if (message.type === 'HISTORY') {
-        // HISTORY 타입은 handleHistoryMessage에서 별도 처리하므로 여기서는 무시
-        return; 
+        if(messageDataForDisplay.timestamp) {
+            const time = new Date(messageDataForDisplay.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            // Tailwind 예시: text-xs ${messageDataForDisplay.sender === currentUserNickname ? 'text-blue-200' : 'text-gray-500'} mt-1
+            messageText += ` <small class="text-muted">(${time})</small>`; // 기존 방식
+        }
+        if (messageDataForDisplay.originalLanguage && currentUserPreferredLanguage && messageDataForDisplay.originalLanguage.toLowerCase() !== currentUserPreferredLanguage.toLowerCase()) {
+            // Tailwind 예시: text-xs ${messageDataForDisplay.sender === currentUserNickname ? 'text-blue-300' : 'text-sky-600'} italic mt-1
+            messageText += ` <small class="text-info" style="font-size: 0.8em;">(Original: ${messageDataForDisplay.originalLanguage})</small>`; // 기존 방식
+        }
     }
-    messageElement.innerHTML = messageText;
-    conversation.appendChild(messageElement);
-    conversation.scrollTop = conversation.scrollHeight; 
+
+    if (messageText) {
+        messageElement.innerHTML = messageText;
+        conversation.appendChild(messageElement);
+        conversation.scrollTop = conversation.scrollHeight;
+    }
+}
+
+function showMessage(message) { // STOMP로부터 받은 원본 메시지
+    if (message.type === 'HISTORY') { // HISTORY 타입은 handleHistoryMessage에서 직접 처리
+        return;
+    }
+
+    if (message.type === 'JOIN' && message.sender === currentUserNickname) {
+        console.log("[showMessage] Buffering current user's JOIN message:", message);
+        bufferedCurrentUserJoinMessage = message; // 현재 사용자의 JOIN 메시지인 경우 버퍼에 저장하고 바로 표시하지 않음
+        return;
+    }
+
+    // 다른 모든 메시지 (다른 사용자의 JOIN/LEAVE, 모든 CHAT 메시지)는 즉시 표시
+    appendMessageToConversation(message);
 }
 
 function handleHistoryMessage(historyMessage) {
     if (historyMessage.type === 'HISTORY' && historyMessage.history) {
         conversation.innerHTML = ''; // 기존 대화 내용 초기화
         historyMessage.history.forEach(msg => {
-            // ChatMessage 엔티티 형식을 BroadcastMessage 형식으로 변환하여 showMessage 재활용
-            // 이제 msg는 ChatMessageDTO 객체입니다. 필드명은 동일하게 사용 가능.
+            // ChatMessageDTO 객체 (서버에서 ChatMessage 엔티티를 변환한 것)
             const displayMsg = {
                 sender: msg.senderNickname,
                 content: msg.content,
                 type: 'CHAT', // 히스토리 메시지도 CHAT 타입으로 표시
-                timestamp: msg.timestamp, // ChatMessage 엔티티의 timestamp 사용
-                originalLanguage: msg.originalLanguage // 원본 언어 추가
+                timestamp: msg.timestamp,
+                originalLanguage: msg.originalLanguage
             };
-            showMessage(displayMsg);
+            appendMessageToConversation(displayMsg); // append 함수 직접 호출
         });
         // 모든 히스토리 메시지 추가 후 스크롤 맨 아래로
         conversation.scrollTop = conversation.scrollHeight;
+
+        // 이전 대화 내용 로드 후, 버퍼에 있던 현재 사용자의 JOIN 메시지가 있다면 표시
+        if (bufferedCurrentUserJoinMessage) {
+            console.log("[handleHistoryMessage] Displaying buffered current user's JOIN message after history.");
+            appendMessageToConversation(bufferedCurrentUserJoinMessage);
+            bufferedCurrentUserJoinMessage = null; // 버퍼 비우기
+        }
     }
 }
 
