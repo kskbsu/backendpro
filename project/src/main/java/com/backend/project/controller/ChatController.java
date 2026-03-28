@@ -88,7 +88,7 @@ public class ChatController {
         return resolvedNickname;
     }
 
-    // 메시지 수신 -> 저장 -> 브로드캐스트.
+    // 메시지 수신 -> 저장(커밋 후 리스너에서 CHAT 브로드캐스트).
     @MessageMapping("/chat.sendMessage/{roomId}")
     public void sendMessage(@DestinationVariable String roomId, @Payload ClientMessagePayload clientPayload, SimpMessageHeaderAccessor headerAccessor) {
         if (clientPayload == null || clientPayload.getContent() == null) {
@@ -114,17 +114,7 @@ public class ChatController {
         }
 
 
-        com.backend.project.model.ChatMessage savedMessage = chatMessageService.saveMessage(roomId, currentNickname, clientPayload.getContent());
-
-        BroadcastMessage broadcastMessage = new BroadcastMessage(
-                roomId,
-                savedMessage.getSenderNickname(),
-                savedMessage.getContent(),
-                MessageType.CHAT,
-                savedMessage.getTimestamp(),
-                null
-        );
-        messagingTemplate.convertAndSend("/topic/room/" + roomId, broadcastMessage);
+        chatMessageService.saveMessage(roomId, currentNickname, clientPayload.getContent());
     }
 
     // 유저 입장 처리(JOIN + 히스토리 전송).

@@ -1,11 +1,13 @@
 package com.backend.project.service;
 
+import com.backend.project.event.ChatMessageSavedEvent;
 import com.backend.project.model.ChatMessage;
 import com.backend.project.model.ChatRoom;
 import com.backend.project.repository.ChatMessageRepository;
 import com.backend.project.repository.ChatRoomRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +23,7 @@ public class ChatMessageService {
 
     private final ChatMessageRepository chatMessageRepository;
     private final ChatRoomRepository chatRoomRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public ChatMessage saveMessage(String roomId, String senderNickname, String content) {
@@ -47,6 +50,11 @@ public class ChatMessageService {
                 .build();
         ChatMessage savedMsg = chatMessageRepository.save(chatMessage);
         log.info("Message saved: id={}, roomId={}, sender={}, content='{}'", savedMsg.getId(), chatRoom.getRoomId(), savedMsg.getSenderNickname(), savedMsg.getContent().substring(0, Math.min(savedMsg.getContent().length(), 20)));
+        eventPublisher.publishEvent(new ChatMessageSavedEvent(
+                chatRoom.getRoomId(),
+                savedMsg.getSenderNickname(),
+                savedMsg.getContent(),
+                savedMsg.getTimestamp()));
         return savedMsg;
     }
 
