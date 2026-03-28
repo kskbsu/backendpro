@@ -14,8 +14,13 @@ public class ChatRoomDTO {
     private String roomId;
     private String name;
     private ChatRoom.ChatRoomType type;
+    private int participantCount;
 
     public static ChatRoomDTO fromEntity(ChatRoom chatRoom) {
-        return new ChatRoomDTO(chatRoom.getRoomId(), chatRoom.getName(), chatRoom.getType());
+        return new ChatRoomDTO(
+                chatRoom.getRoomId(),
+                chatRoom.getName(),
+                chatRoom.getType(),
+                chatRoom.getParticipantCount());
     }
 }

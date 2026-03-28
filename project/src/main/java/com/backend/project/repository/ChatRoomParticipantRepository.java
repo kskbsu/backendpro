@@ -17,4 +17,8 @@ public interface ChatRoomParticipantRepository extends JpaRepository<ChatRoomPar
 
     // 특정 사용자와 특정 채팅방의 참여 정보를 조회 (예: 중복 참여 방지 등)
     Optional<ChatRoomParticipant> findByUserAndChatRoom(User user, ChatRoom chatRoom);
+
+    boolean existsByUserAndChatRoom(User user, ChatRoom chatRoom);
+
+    void deleteByUserAndChatRoom(User user, ChatRoom chatRoom);
 }
