@@ -5,6 +5,7 @@ import com.backend.project.model.User;
 import com.backend.project.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -15,6 +16,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.backend.project.exception.ApiException;
+import com.backend.project.exception.ErrorCode;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -27,29 +31,25 @@ public class AuthController {
 
     private final UserService userService;
 
+    // 회원가입 처리.
     @PostMapping("/signup")
-    public ResponseEntity<String> signup(@RequestBody SignupRequestDto signupRequestDto) {
-        try {
-            log.info("Attempting to register user: {}", signupRequestDto.getUsername());
-            userService.registerUser(signupRequestDto);
-            log.info("User {} registered successfully", signupRequestDto.getUsername());
-            return ResponseEntity.status(HttpStatus.CREATED).body("회원가입 성공");
-        } catch (IllegalArgumentException e) {
-            log.warn("Signup failed for user {}: {}", signupRequestDto.getUsername(), e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        } catch (Exception e) {
-            log.error("Unexpected error during signup for user {}: {}", signupRequestDto.getUsername(), e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("회원가입 중 예상치 못한 오류가 발생했습니다.");
-        }
+    public ResponseEntity<Map<String, String>> signup(@Valid @RequestBody SignupRequestDto signupRequestDto) {
+        log.info("Attempting to register user: {}", signupRequestDto.getUsername());
+        userService.registerUser(signupRequestDto);
+        log.info("User {} registered successfully", signupRequestDto.getUsername());
+        Map<String, String> body = new HashMap<>();
+        body.put("message", "회원가입 성공");
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
- @GetMapping("/me")
+    // 현재 로그인 사용자 조회.
+    @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal().toString())) {
             log.info("No authenticated user found or user is anonymous.");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("인증되지 않은 사용자입니다.");
+            throw new ApiException(ErrorCode.UNAUTHORIZED);
         }
 
         String username;
@@ -62,7 +62,7 @@ public class AuthController {
         }
 
         log.info("Fetching details for current authenticated user: {}", username);
-        User user = userService.getUserByUsername(username); // UserService에 getUserByUsername 메소드 추가 필요
+        User user = userService.getUserByUsername(username);
 
         Map<String, String> userInfo = new HashMap<>();
         userInfo.put("nickname", user.getNickname());

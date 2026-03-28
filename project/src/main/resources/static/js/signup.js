@@ -1,51 +1,111 @@
 document.addEventListener('DOMContentLoaded', function() {
     const signupForm = document.getElementById('signupForm');
-    if (signupForm) {
-        signupForm.addEventListener('submit', async function(event) {
-            event.preventDefault(); // 폼 기본 제출 동작 방지
+    if (!signupForm) {
+        return;
+    }
 
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const nickname = document.getElementById('nickname').value;
-            const messageArea = document.getElementById('messageArea');
+    const FIELD_NAMES = ['username', 'password', 'nickname'];
 
-            if (!messageArea) {
-                console.error('Message area not found');
-                return;
-            }
-            messageArea.textContent = ''; // 이전 메시지 초기화
-            messageArea.className = 'message';
-            // signupForm.reset(); // 메시지 표시 전에 폼을 리셋할 필요는 없어 보입니다. 성공 시 리셋.
-
-            try {
-                const response = await fetch('/api/auth/signup', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username, password, nickname })
-                });
-
-                const responseText = await response.text(); // 서버 응답을 텍스트로 먼저 받음
-
-                // AuthController에서는 성공 시 HttpStatus.CREATED (201)과 함께 "회원가입 성공" 메시지를 반환합니다.
-                // response.ok는 상태 코드가 200-299 범위일 때 true입니다.
-                if (response.ok) {
-                    messageArea.textContent = responseText; // 서버에서 받은 성공 메시지
-                    messageArea.className = 'message success';
-                    signupForm.reset(); // 성공 시 폼 내용 초기화
-                    setTimeout(() => {
-                        window.location.href = '/login.html'; // login.html로 리디렉션 (기존 코드에서는 /login 이었음)
-                    }, 2000); // 2초 후 이동
-                } else {
-                    messageArea.textContent = responseText; // 서버에서 받은 실패 메시지
-                    messageArea.className = 'message error';
-                }
-            } catch (error) {
-                console.error('Error:', error); // 콘솔 에러 메시지 일관성 유지
-                messageArea.textContent = '회원가입 중 오류가 발생했습니다. 다시 시도해주세요.'; // 사용자에게 표시되는 메시지 일관성 유지
-                messageArea.className = 'message error';
+    function clearFieldErrors() {
+        FIELD_NAMES.forEach(function(name) {
+            const el = document.getElementById(name + 'Error');
+            if (el) {
+                el.textContent = '';
             }
         });
     }
+
+    function setFieldErrorsFromPayload(fieldErrors) {
+        if (!Array.isArray(fieldErrors)) {
+            return;
+        }
+        fieldErrors.forEach(function(item) {
+            if (!item || typeof item.field !== 'string') {
+                return;
+            }
+            const el = document.getElementById(item.field + 'Error');
+            if (el) {
+                el.textContent = item.message || '';
+            }
+        });
+    }
+
+    function resetMessageArea(messageArea) {
+        messageArea.textContent = '';
+        messageArea.classList.add('hidden');
+        messageArea.className = 'hidden text-sm text-center rounded px-3 py-2 mb-4';
+    }
+
+    function showMessageArea(messageArea, kind, text) {
+        messageArea.textContent = text;
+        messageArea.classList.remove('hidden');
+        var base = 'text-sm text-center rounded px-3 py-2 mb-4 ';
+        messageArea.className = base + (kind === 'success'
+            ? 'text-green-800 bg-green-50 border border-green-200'
+            : 'text-red-800 bg-red-50 border border-red-200');
+    }
+
+    signupForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const nickname = document.getElementById('nickname').value;
+        const messageArea = document.getElementById('messageArea');
+        const submitBtn = document.getElementById('signupSubmitBtn');
+
+        if (!messageArea || !submitBtn) {
+            console.error('messageArea or signupSubmitBtn not found');
+            return;
+        }
+
+        clearFieldErrors();
+        resetMessageArea(messageArea);
+        submitBtn.disabled = true;
+
+        var signupSucceeded = false;
+        try {
+            const response = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username: username, password: password, nickname: nickname })
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            var data = null;
+            if (contentType.includes('application/json')) {
+                data = await response.json();
+            }
+
+            if (response.ok) {
+                signupSucceeded = true;
+                var okMsg = (data && data.message) ? data.message : '회원가입 성공';
+                showMessageArea(messageArea, 'success', okMsg);
+                signupForm.reset();
+                clearFieldErrors();
+                setTimeout(function() {
+                    window.location.href = '/login.html';
+                }, 2000);
+                return;
+            }
+
+            if (data) {
+                setFieldErrorsFromPayload(data.fieldErrors);
+                var errMsg = data.message || '요청을 처리할 수 없습니다.';
+                showMessageArea(messageArea, 'error', errMsg);
+            } else {
+                var fallback = await response.text();
+                showMessageArea(messageArea, 'error', fallback || '요청을 처리할 수 없습니다.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessageArea(messageArea, 'error', '회원가입 중 오류가 발생했습니다. 다시 시도해 주세요.');
+        } finally {
+            if (!signupSucceeded) {
+                submitBtn.disabled = false;
+            }
+        }
+    });
 });

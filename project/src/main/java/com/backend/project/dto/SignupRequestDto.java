@@ -1,24 +1,23 @@
 package com.backend.project.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
-
-// jakarta.validation.constraints.* 등을 사용하여 유효성 검사 어노테이션 추가 가능
-// 예: import jakarta.validation.constraints.NotBlank;
-// 예: import jakarta.validation.constraints.Size;
 
 @Getter
 @Setter
 public class SignupRequestDto {
-    // @NotBlank // 예: 사용자 아이디는 비어있을 수 없습니다.
-    // @Size(min = 4, max = 20) // 예: 사용자 아이디는 4자 이상 20자 이하이어야 합니다.
+
+    @NotBlank(message = "사용자명을 입력해 주세요.")
+    @Size(max = 50, message = "사용자명은 50자 이하여야 합니다.")
     private String username;
 
-    // @NotBlank
+    @NotBlank(message = "비밀번호를 입력해 주세요.")
+    @Size(min = 4, max = 100, message = "비밀번호는 4자 이상 100자 이하여야 합니다.")
     private String password;
 
-    // @NotBlank
+    @NotBlank(message = "닉네임을 입력해 주세요.")
+    @Size(max = 50, message = "닉네임은 50자 이하여야 합니다.")
     private String nickname;
-
-    // preferredLanguage 필드 제거
 }
