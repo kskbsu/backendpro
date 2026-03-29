@@ -15,6 +15,4 @@ public class ChatMessageDTO {
     private String senderNickname;
     private String content;
     private LocalDateTime timestamp;
-    // originalLanguage 필드 제거 (만약 추가했었다면)
-    
 }

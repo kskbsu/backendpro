@@ -39,15 +39,4 @@ public class ChatRoomParticipant {
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
-
-    // (선택적) 사용자가 채팅방에 참여한 시간 등 추가 정보
-    // private LocalDateTime joinedAt;
-
-    // 생성자, getter, setter 등 (Lombok 사용)
-
-    // equals() 및 hashCode() 구현 (필요에 따라)
-    // @Override
-    // public boolean equals(Object o) { ... }
-    // @Override
-    // public int hashCode() { ... }
 }

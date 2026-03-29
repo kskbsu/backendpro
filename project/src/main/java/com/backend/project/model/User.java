@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "users") // 데이터베이스 테이블 이름을 'users'로 지정
+@Table(name = "users")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,17 +22,15 @@ import lombok.Setter;
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // DB가 ID를 자동으로 생성하도록 설정
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true) // null을 허용하지 않고, 유일한 값이어야 함
-    private String username; // 로그인 ID
+    @Column(nullable = false, unique = true)
+    private String username;
 
     @Column(nullable = false)
-    private String password; // 암호화된 비밀번호 저장
+    private String password;
 
     @Column(nullable = false, unique = true)
-    private String nickname; // 채팅에서 사용할 닉네임
-
-    // preferredLanguage 필드 제거
+    private String nickname;
 }
