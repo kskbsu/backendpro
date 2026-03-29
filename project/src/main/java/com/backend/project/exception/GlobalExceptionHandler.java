@@ -32,14 +32,14 @@ public class GlobalExceptionHandler {
                 fe.getField(),
                 fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "invalid")));
         return ResponseEntity.status(ErrorCode.VALIDATION_FAILED.getHttpStatus())
-                .body(build(ErrorCode.VALIDATION_FAILED, ErrorCode.VALIDATION_FAILED.getDefaultMessage(), fieldErrors));
+                .body(build(ErrorCode.VALIDATION_FAILED, fieldErrors));
     }
 
     @ExceptionHandler(UsernameNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleUsernameNotFound(UsernameNotFoundException e) {
         log.warn("UsernameNotFoundException: {}", e.getMessage());
         return ResponseEntity.status(ErrorCode.USER_NOT_FOUND.getHttpStatus())
-                .body(build(ErrorCode.USER_NOT_FOUND, ErrorCode.USER_NOT_FOUND.getDefaultMessage(), null));
+                .body(build(ErrorCode.USER_NOT_FOUND));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -53,7 +53,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleUnhandled(Exception e) {
         log.error("Unhandled exception", e);
         return ResponseEntity.status(ErrorCode.INTERNAL_ERROR.getHttpStatus())
-                .body(build(ErrorCode.INTERNAL_ERROR, ErrorCode.INTERNAL_ERROR.getDefaultMessage(), null));
+                .body(build(ErrorCode.INTERNAL_ERROR));
     }
 
     private static ApiErrorResponse build(ErrorCode errorCode, String message, List<ApiFieldError> fieldErrors) {
@@ -63,5 +63,14 @@ public class GlobalExceptionHandler {
 
     private static ApiErrorResponse build(ErrorCode errorCode, String message) {
         return build(errorCode, message, null);
+    }
+
+    /** 기본 메시지는 항상 {@link ErrorCode#getDefaultMessage()}만 사용 (응답 문구 단일 출처). */
+    private static ApiErrorResponse build(ErrorCode errorCode) {
+        return build(errorCode, errorCode.getDefaultMessage(), null);
+    }
+
+    private static ApiErrorResponse build(ErrorCode errorCode, List<ApiFieldError> fieldErrors) {
+        return build(errorCode, errorCode.getDefaultMessage(), fieldErrors);
     }
 }

@@ -9,16 +9,12 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.backend.project.exception.ApiException;
-import com.backend.project.exception.ErrorCode;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -44,14 +40,7 @@ public class AuthController {
 
     // 현재 로그인 사용자 조회.
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal().toString())) {
-            log.info("No authenticated user found or user is anonymous.");
-            throw new ApiException(ErrorCode.UNAUTHORIZED);
-        }
-
+    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
         String username;
         Object principal = authentication.getPrincipal();
 
