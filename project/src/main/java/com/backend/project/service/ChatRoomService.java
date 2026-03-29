@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+// 채팅방 참가·퇴장. 인원은 JPQL UPDATE로 갱신, 참가 행과 같은 트랜잭션.
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -33,7 +34,7 @@ public class ChatRoomService {
     @SuppressWarnings({"null", "NullableProblems", "ConstantConditions", "DataFlowIssue"})
     @Transactional
     public void joinRoom(String roomId, User user) {
-        ChatRoom room = chatRoomRepository.findByRoomIdForUpdate(roomId).orElse(null);
+        ChatRoom room = chatRoomRepository.findByRoomId(roomId).orElse(null);
         if (room == null) {
             log.warn("joinRoom skipped: no ChatRoom for roomId={}", roomId);
             return;
@@ -45,15 +46,17 @@ public class ChatRoomService {
         int before = room.getParticipantCount();
         chatRoomParticipantRepository.save(
                 ChatRoomParticipant.builder().chatRoom(room).user(user).build());
-        room.setParticipantCount(before + 1);
-        chatRoomRepository.save(room);
-        log.info("joinRoom: roomId={}, userId={}, participantCount: {} -> {}", roomId, user.getId(), before, room.getParticipantCount());
+        int updated = chatRoomRepository.incrementParticipantCountByRoomId(roomId);
+        if (updated != 1) {
+            log.warn("joinRoom: unexpected increment row count={} for roomId={}, userId={}", updated, roomId, user.getId());
+        }
+        log.info("joinRoom: roomId={}, userId={}, participantCount: {} -> {}", roomId, user.getId(), before, before + 1);
     }
 
     @SuppressWarnings({"null", "NullableProblems", "ConstantConditions", "DataFlowIssue"})
     @Transactional
     public void leaveRoom(String roomId, User user) {
-        ChatRoom room = chatRoomRepository.findByRoomIdForUpdate(roomId).orElse(null);
+        ChatRoom room = chatRoomRepository.findByRoomId(roomId).orElse(null);
         if (room == null) {
             log.warn("leaveRoom skipped: no ChatRoom for roomId={}", roomId);
             return;
@@ -64,9 +67,12 @@ public class ChatRoomService {
         }
         int before = room.getParticipantCount();
         chatRoomParticipantRepository.deleteByUserAndChatRoom(user, room);
+        int updated = chatRoomRepository.decrementParticipantCountByRoomId(roomId);
         int after = Math.max(0, before - 1);
-        room.setParticipantCount(after);
-        chatRoomRepository.save(room);
+        if (updated != 1 && before > 0) {
+            log.warn("leaveRoom: unexpected decrement row count={} for roomId={}, userId={}, beforeCount={}",
+                    updated, roomId, user.getId(), before);
+        }
         log.info("leaveRoom: roomId={}, userId={}, participantCount: {} -> {}", roomId, user.getId(), before, after);
     }
 }

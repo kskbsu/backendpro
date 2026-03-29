@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+// 저장 커밋 이후 CHAT 브로드캐스트(AFTER_COMMIT). @Async 없음·동기 전송(시점 분리만).
 @Slf4j
 @Component
 @RequiredArgsConstructor
