@@ -52,6 +52,7 @@ public class ChatMessageService {
         log.info("Message saved: id={}, roomId={}, sender={}, content='{}'", savedMsg.getId(), chatRoom.getRoomId(), savedMsg.getSenderNickname(), savedMsg.getContent().substring(0, Math.min(savedMsg.getContent().length(), 20)));
         eventPublisher.publishEvent(new ChatMessageSavedEvent(
                 chatRoom.getRoomId(),
+                savedMsg.getId(),
                 savedMsg.getSenderNickname(),
                 savedMsg.getContent(),
                 savedMsg.getTimestamp()));

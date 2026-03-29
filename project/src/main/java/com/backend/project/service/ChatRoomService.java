@@ -39,12 +39,15 @@ public class ChatRoomService {
             return;
         }
         if (chatRoomParticipantRepository.existsByUserAndChatRoom(user, room)) {
+            log.info("joinRoom skipped: already participant roomId={}, userId={}", roomId, user.getId());
             return;
         }
+        int before = room.getParticipantCount();
         chatRoomParticipantRepository.save(
                 ChatRoomParticipant.builder().chatRoom(room).user(user).build());
-        room.setParticipantCount(room.getParticipantCount() + 1);
+        room.setParticipantCount(before + 1);
         chatRoomRepository.save(room);
+        log.info("joinRoom: roomId={}, userId={}, participantCount: {} -> {}", roomId, user.getId(), before, room.getParticipantCount());
     }
 
     @SuppressWarnings({"null", "NullableProblems", "ConstantConditions", "DataFlowIssue"})
@@ -56,10 +59,14 @@ public class ChatRoomService {
             return;
         }
         if (!chatRoomParticipantRepository.existsByUserAndChatRoom(user, room)) {
+            log.info("leaveRoom skipped: not a participant roomId={}, userId={}", roomId, user.getId());
             return;
         }
+        int before = room.getParticipantCount();
         chatRoomParticipantRepository.deleteByUserAndChatRoom(user, room);
-        room.setParticipantCount(Math.max(0, room.getParticipantCount() - 1));
+        int after = Math.max(0, before - 1);
+        room.setParticipantCount(after);
         chatRoomRepository.save(room);
+        log.info("leaveRoom: roomId={}, userId={}, participantCount: {} -> {}", roomId, user.getId(), before, after);
     }
 }

@@ -6,6 +6,7 @@ import com.backend.project.exception.ErrorCode;
 import com.backend.project.model.User;
 import com.backend.project.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +15,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -41,7 +43,9 @@ public class UserService {
                 .nickname(nickname)
                 .build();
 
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        log.info("User registered: id={}, username={}", saved.getId(), saved.getUsername());
+        return saved;
     }
     // username 기준 사용자 조회.
     @Transactional(readOnly = true)
