@@ -1,6 +1,8 @@
 package com.backend.project.service;
 
 import com.backend.project.dto.ChatRoomDTO;
+import com.backend.project.exception.ApiException;
+import com.backend.project.exception.ErrorCode;
 import com.backend.project.model.ChatRoom;
 import com.backend.project.model.ChatRoomParticipant;
 import com.backend.project.model.User;
@@ -44,12 +46,13 @@ public class ChatRoomService {
             return;
         }
         int before = room.getParticipantCount();
-        chatRoomParticipantRepository.save(
-                ChatRoomParticipant.builder().chatRoom(room).user(user).build());
         int updated = chatRoomRepository.incrementParticipantCountByRoomId(roomId);
         if (updated != 1) {
-            log.warn("joinRoom: unexpected increment row count={} for roomId={}, userId={}", updated, roomId, user.getId());
+            log.info("joinRoom: room full or update skipped roomId={}, userId={}, beforeCount={}", roomId, user.getId(), before);
+            throw new ApiException(ErrorCode.ROOM_FULL);
         }
+        chatRoomParticipantRepository.save(
+                ChatRoomParticipant.builder().chatRoom(room).user(user).build());
         log.info("joinRoom: roomId={}, userId={}, participantCount: {} -> {}", roomId, user.getId(), before, before + 1);
     }
 

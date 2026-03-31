@@ -43,7 +43,11 @@ public class ChatRoom {
     @Column(nullable = false)
     @Builder.Default
     private int participantCount = 0;
-    
+
+    @Column(nullable = false)
+    @Builder.Default
+    private int maxCapacity = 50;
+
     public enum ChatRoomType {
         ONE_TO_ONE, GROUP
     }

@@ -14,9 +14,10 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
     Optional<ChatRoom> findByRoomId(String roomId);
 
-    // roomId 기준 participantCount +1 (단일 UPDATE).
+    // roomId 기준, 정원 미만일 때만 participantCount +1 (단일 UPDATE).
     @Modifying
-    @Query("UPDATE ChatRoom c SET c.participantCount = c.participantCount + 1 WHERE c.roomId = :roomId")
+    @Query("UPDATE ChatRoom c SET c.participantCount = c.participantCount + 1 " +
+            "WHERE c.roomId = :roomId AND c.participantCount < c.maxCapacity")
     int incrementParticipantCountByRoomId(@Param("roomId") String roomId);
 
     // participantCount > 0일 때만 -1 (음수 방지).
